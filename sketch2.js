@@ -6,21 +6,16 @@ let policeCarImage,
   ambulanceImage,
   otherCarImages = [];
 let player, ambulance, left_enemy_cars, right_enemy_cars, explosionSheet;
-
+let hearts = [],
+  heart,
+  heartGroup;
 let MARGIN = 20;
 let moveX = 0;
 
 function preload() {
-  //   policeCarImage = loadImage("assets/V2/police_animation/2.png");
-  ambulanceImage = loadImage("assets/Ambulance.png");
   for (let i = 0; i <= 6; i++) {
     otherCarImages[i] = loadImage(`assets/Car${i}.png`);
   }
-  explosionSheet = loadAnimation(
-    "assets/explosion/Frames/E0000.png",
-    "assets/explosion/Frames/E0009.png"
-  );
-  // explosionSheet.scale = 5;
 }
 
 function setup() {
@@ -29,7 +24,7 @@ function setup() {
   player = new Player();
   left_enemy_cars = new Group();
   right_enemy_cars = new Group();
-
+  heartGroup = new Group();
   SCENE_H = height;
   SCENE_W = width;
 }
@@ -37,68 +32,81 @@ function setup() {
 function draw() {
   background(0);
   player.move(50);
-  setupCamera();
-  // camera.position.y = player.getProperties().position.y;
-  player.getProperties().collide(right_enemy_cars);
-  player.getProperties().collide(left_enemy_cars);
-  left_enemy_cars.collide(right_enemy_cars);
-  right_enemy_cars.collide(left_enemy_cars);
-  right_enemy_cars.collide(right_enemy_cars);
-  left_enemy_cars.collide(left_enemy_cars);
-  let right_lane_car;
-  let left_lane_car;
-  if (frameCount % 100 === 0) {
-    let rightH = height / 2 + width;
-    let rightX = random(20 + width / 2);
-    let leftH = height / 2 - 2 * width - random(70, 250);
 
-    right_lane_car = createSprite(random(width / 2, width), height + rightH);
-    right_lane_car.addImage(otherCarImages[parseInt(random(0, 6))]);
-    // right_lane_car.setCollider("rectangle", 0, 0, 10, 150);
-    right_lane_car.velocity.y -= random(8, 13);
+  let player_sprite = player.getProperties();
+  player.attack();
+  setupCamera(player_sprite);
+
+  //Collision and overlaps
+  player_sprite.collide(right_enemy_cars, onCollideWithCar);
+  player_sprite.collide(left_enemy_cars, onCollideWithCar);
+  player_sprite.overlap(heartGroup, onHeartOverlap);
+  left_enemy_cars.bounce(right_enemy_cars);
+  right_enemy_cars.bounce(left_enemy_cars);
+  right_enemy_cars.bounce(right_enemy_cars);
+  left_enemy_cars.bounce(left_enemy_cars);
+
+  if (frameCount % 60 === 0) {
+    let { left_lane_car, right_lane_car } = spawnCars(otherCarImages);
+    left_enemy_cars.add(left_lane_car);
     right_enemy_cars.add(right_lane_car);
 
-    left_lane_car = createSprite(rightX, leftH);
-    left_lane_car.addImage(otherCarImages[parseInt(random(0, 6))]);
-    left_lane_car.mirrorY(-1);
-    // left_lane_car.setCollider("rectangle", 0, 0, 10, 150);
-    left_lane_car.velocity.y += 5;
-    left_enemy_cars.add(left_lane_car);
-
-    // leftLaneCar.getProperties().setSpeed(3, 5);
-    // leftLaneCar.getProperties().attractionPoint(0.2, mouseX, mouseY);
     for (var i = 0; i < left_enemy_cars.length; i++)
       if (left_enemy_cars[i].position.y > height) {
         left_enemy_cars[i].remove();
       }
+
     for (var i = 0; i < right_enemy_cars.length; i++)
       if (right_enemy_cars[i].position.y < 0 - height - 1000) {
         right_enemy_cars[i].remove();
       }
+
+    let heart = new Heart(
+      parseInt(random(0, width)),
+      parseInt(random(0, height))
+    );
+    hearts.push(heart);
+    heartGroup.add(heart.getProperties());
+    for (var i = 0; i < hearts.length; i++) {
+      if (hearts[i].duration >= 5) {
+        hearts[i].getProperties().remove();
+        heartGroup.remove(hearts[i].getProperties());
+      } else hearts[i].duration++;
+    }
   }
 
   drawSprites();
+  GUI();
 }
 
-function explode(spriteA, spriteB) {
-  console.log(spriteB.position.x, spriteB.position.y);
-  spriteB.setSpeed(0);
-  animation(explosionSheet, spriteB.position.x, spriteB.position.y);
-  // spriteB.remove();
-}
-
-function setupCamera() {
+function setupCamera(player) {
   //limit the player movements
-  if (player.getProperties().position.x < 0)
-    player.getProperties().position.x = 0;
-  if (player.getProperties().position.y < 0)
-    player.getProperties().position.y = 0;
-  if (player.getProperties().position.x > SCENE_W)
-    player.getProperties().position.x = SCENE_W;
-  if (player.getProperties().position.y > SCENE_H)
-    player.getProperties().position.y = SCENE_H;
-  //.5 zoom is zooming out (50% of the normal size)
-  // if (mouseIsPressed)
-  // camera.zoom = 0.75;
+  if (player.position.x < 0) player.position.x = 0;
+  if (player.position.y < 0) player.position.y = 0;
+  if (player.position.x > SCENE_W) player.position.x = SCENE_W;
+  if (player.position.y > SCENE_H) player.position.y = SCENE_H;
+  // camera.zoom = 0.8;
   // camera.zoom = 1;
+}
+
+function GUI() {
+  push();
+  textSize(32);
+  fill(0, 102, 153);
+  text(`Health: ${player.health}`, 400, 40);
+  text(`Attack: ${player.milee}`, 400, 70);
+  pop();
+}
+
+function onHeartOverlap(spriteA, spriteB) {
+  spriteB.remove();
+  heartGroup.remove(spriteB);
+  player.increaseHealth();
+}
+
+function onCollideWithCar(spriteA, car) {
+  // console.log(Math.abs(car.velocity.y));
+  // if(player.attack())x
+
+  player.decreaseHealth(parseInt(0.15 * Math.abs(car.velocity.y)));
 }
