@@ -56,9 +56,3 @@ function gotData() {
   joystick.y = parseInt(data[1]);
   joystick.btn = parseInt(data[2]) == 1 ? false : true;
 }
-
-//Locks for Arduino serial comm.
-//Only send message to arduino once to display on the LCD.
-let toggleR = false,
-  toggleS = false,
-  toggleO = false;

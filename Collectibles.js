@@ -1,3 +1,4 @@
+//For heart collectible
 class Heart {
   constructor(x, y) {
     this.percentage = 100;
@@ -17,6 +18,7 @@ class Heart {
   }
 }
 
+//For exploding cars
 class Explosion {
   constructor(x, y) {
     this.damage = 100;

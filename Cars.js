@@ -1,3 +1,4 @@
+// For police cars
 class PoliceCar {
   constructor(posX, posY, type) {
     this.health = 100;
@@ -19,6 +20,7 @@ class PoliceCar {
   }
 }
 
+// For regular cars
 class RegularCar {
   constructor(posX, posY, carImage, type) {
     this.health = 100;
@@ -37,6 +39,7 @@ class RegularCar {
   }
 }
 
+// For ambulances
 class Ambulance {
   constructor(posX, posY, type) {
     this.health = 100;
@@ -58,6 +61,7 @@ class Ambulance {
   }
 }
 
+//Spawn normal cars at random postions
 function spawnCars(images) {
   let rightH = height / 2 + width;
   let rightX = random(40, width / 2);
@@ -83,16 +87,12 @@ function spawnCars(images) {
   };
 }
 
+//Spawn ambulances at random positions
 function spawnMedics() {
   let rightH = height / 2 + width;
   let rightX = random(40, width / 2);
   let leftH = height / 2 - 2 * width - random(70, 250);
-  let leftAmb = new Ambulance(
-    rightX,
-    leftH,
-
-    "left"
-  );
+  let leftAmb = new Ambulance(rightX, leftH, "left");
 
   let rightAmb = new Ambulance(
     random(width / 2, width - 40),
@@ -107,12 +107,12 @@ function spawnMedics() {
   };
 }
 
+//Spawn police cars at random positions
 function spawnCops() {
   let rightH = height / 2 + width;
   let rightX = random(40, width / 2);
   let leftH = height / 2 - 2 * width - random(70, 250);
   let leftcop = new PoliceCar(rightX, leftH, "left");
-
   let rightcop = new PoliceCar(
     random(width / 2, width - 40),
     height + rightH,

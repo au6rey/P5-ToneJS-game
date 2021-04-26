@@ -1,19 +1,35 @@
-let otherCarImages = [];
+//Player and car sprites
 let player, left_car_group, right_car_group;
+
+//Heart collectibles
 let hearts = [],
   heart,
   heartGroup;
+
+//For in game moments
 let gameIsOver = false,
   gameStarted = false,
   isAttacking = false;
+
+//Game timer
 let timer = 0,
   deficit = 0;
-let bgImage, dialogBox;
 
+//Images
+let bgImage, dialogBox;
+let otherCarImages = [];
+
+//For music
 let musicplayer,
   introMusicStarted = false,
   outroMusicStarted = false,
   themeStarted = false;
+
+//Locks for Arduino serial comm.
+//Only send message to arduino once to display on the LCD.
+let toggleR = false,
+  toggleS = false,
+  toggleO = false;
 
 function preload() {
   for (let i = 0; i <= 6; i++) {
@@ -23,29 +39,53 @@ function preload() {
 
 function setup() {
   createCanvas(956, 1000);
+
+  //Menu and bacgrond image
   bgImage = loadImage("assets/bgImage.jpg");
   dialogBox = loadImage("assets/Menu/dbox.png");
-  player = new Player();
+
+  //Music controller
   musicplayer = new MusicPlayer();
+
+  //Player sprites and character
+  player = new Player();
+
+  //P5.play sprite group
   left_car_group = new Group();
   right_car_group = new Group();
   heartGroup = new Group();
+
+  //Setup controller
   setupArduino();
 }
 
 function draw() {
   background(0);
   checkPlayerStats(player);
+
+  //Get character skeleton/sprite
   let player_sprite = player.getProperties();
+
   setupCamera(player_sprite);
+
+  //Start menu
   let gameOnStart = !gameStarted && !gameIsOver;
+
+  //When game starts
   let gameOnSession = !gameIsOver && gameStarted;
+
   controlMusic();
+
   if (gameOnStart) {
     newGame(player_sprite);
   } else if (gameOnSession) {
+    //Move character at speed 50 and if joystick available
     player.move(50, joystick);
+
+    //Returns true if player is actively attcaking cars
     isAttacking = player.attack(joystick);
+
+    //Set up collisions and overlaps
     player_sprite.collide(right_car_group, onCollideWithCar);
     player_sprite.collide(left_car_group, onCollideWithCar);
     player_sprite.overlap(heartGroup, onHeartOverlap);
@@ -53,10 +93,14 @@ function draw() {
     right_car_group.bounce(left_car_group);
     right_car_group.bounce(right_car_group);
     left_car_group.bounce(left_car_group);
+
+    //Game logic
     gameSession();
   } else gameOver();
 
   drawSprites();
+
+  //Display Game HUD
   GUI(gameOnStart, gameOnSession);
 }
 
@@ -67,23 +111,26 @@ function setupCamera(player) {
   if (player.position.x > width) player.position.x = width;
   if (player.position.y > height) player.position.y = height;
 
+  //Background roud image
   camera.off();
   image(bgImage, 0, 0);
   camera.on();
 }
 
+//In game timer
 let timerId = setInterval(counter, 1000);
 function counter() {
   if (!gameIsOver) timer++;
+
+  //Every 10 seconds
   if (timer % 10 === 0) {
-    deficit += 10;
-    player.milee += 5;
+    deficit += 10; //Increases car spawns
+    player.milee += 5; //Player gets bonus
   }
 }
 
 function GUI(gameOnStart, gameOnSession) {
   if (gameOnStart) {
-    // fill(170, 100, 80);
     fill("blue");
     let x = width / 2 - 150;
     let y = height / 2 - 140;
@@ -98,6 +145,7 @@ function GUI(gameOnStart, gameOnSession) {
     textSize(24);
     text(`PRESS ENTER TO PLAY`, 12, 180);
     pop();
+
     //Signal Arduino to display Ready to play
     if (!toggleR) serial.write("R");
     toggleR = true;
@@ -114,13 +162,13 @@ function GUI(gameOnStart, gameOnSession) {
     text(`Attack: ${player.milee}`, 10, 70);
     text(`Timer: ${timer}s`, 10, 110);
     pop();
+
     //Signal Arduino to display Game has started
     if (!toggleS) serial.write("S");
     toggleS = true;
   } else {
     push();
     textSize(28);
-
     fill("red");
     let x = width / 2 - 125;
     let y = height / 2 - 140;
@@ -134,12 +182,14 @@ function GUI(gameOnStart, gameOnSession) {
     textSize(17);
     text(`Refresh page to play.`, 40, 120);
     pop();
+
     //Signal Arduino to display Game has ended.
     if (!toggleO) serial.write("O");
     toggleO = true;
   }
 }
 
+//When player overlaps heart they gain health
 function onHeartOverlap(spriteA, spriteB) {
   let gain = parseInt(spriteB.scale * 100);
   player.increaseHealth(gain);
@@ -149,6 +199,7 @@ function onHeartOverlap(spriteA, spriteB) {
   serial.write("U");
 }
 
+//When player overlaps car
 function onCollideWithCar(spriteA, car) {
   if (isAttacking) {
     new Explosion(car.position.x, car.position.y);
@@ -160,6 +211,7 @@ function onCollideWithCar(spriteA, car) {
   serial.write("H");
 }
 
+//Starts new game
 function newGame(player) {
   timer = 0;
 
@@ -173,6 +225,7 @@ function newGame(player) {
   }
 }
 
+//When player health is 0
 function gameOver() {
   heartGroup.removeSprites();
   hearts.forEach((heart) => {
@@ -184,6 +237,7 @@ function gameOver() {
 }
 
 function checkPlayerStats(player) {
+  //Check player health and update sprites
   if (player.health <= 0) {
     gameIsOver = true;
     gameStarted = false;
@@ -192,6 +246,7 @@ function checkPlayerStats(player) {
   }
 }
 
+//Game logic
 function gameSession() {
   if (frameCount % (50 - deficit) === 0) {
     let { left_lane_car, right_lane_car } = spawnCars(otherCarImages);
@@ -199,29 +254,33 @@ function gameSession() {
     left_car_group.add(left_lane_car);
     right_car_group.add(right_lane_car);
 
+    //Remove off screen cars
     for (var i = 0; i < left_car_group.length; i++)
       if (left_car_group[i].position.y > height) {
         left_car_group[i].remove();
       }
-
+    //Remove off screen cars
     for (var i = 0; i < right_car_group.length; i++)
       if (right_car_group[i].position.y < 0 - height - 1000) {
         right_car_group[i].remove();
       }
 
+    //Ambulance spawns when player health falls below 20
     if (player.health <= 20) {
       let { left_lane_amb, right_lane_amb } = spawnMedics();
       left_car_group.add(left_lane_amb);
       right_car_group.add(right_lane_amb);
     }
 
-    if (player.health >= 150) {
+    //Cops spawns when player health above 200
+    if (player.health >= 200) {
       let { left_lane_cop, right_lane_cop } = spawnCops();
       left_car_group.add(left_lane_cop);
       right_car_group.add(right_lane_cop);
     }
   }
 
+  //Spawn hearts
   if (frameCount % (120 + deficit) === 0) {
     let heart = new Heart(
       parseInt(random(0, width)),
@@ -230,6 +289,8 @@ function gameSession() {
 
     hearts.push(heart);
     heartGroup.add(heart.getProperties());
+
+    //Remove a heart after 4 units
     for (var i = 0; i < hearts.length; i++) {
       if (hearts[i].duration >= 4) {
         hearts[i].getProperties().remove();
@@ -239,6 +300,7 @@ function gameSession() {
   }
 }
 
+//Control in-game music
 function controlMusic() {
   if (!introMusicStarted && !gameStarted) {
     musicplayer.startIntro();
