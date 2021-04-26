@@ -1,3 +1,5 @@
+//YOUTUBE LINK
+//https://www.youtube.com/watch?v=jd9C-1zQVu4
 class MusicPlayer {
   constructor() {
     //Reverb effect
@@ -159,7 +161,7 @@ class MusicPlayer {
       envelope: {
         attack: 0.1,
       },
-      volume: -20,
+      volume: -25,
     }).toDestination();
 
     this.bassLinePart = new Tone.Part(
